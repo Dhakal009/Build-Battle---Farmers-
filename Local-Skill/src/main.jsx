@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   ArrowRight, Check, ChevronDown, Clock3, MapPin, Menu, Search,
   ShieldCheck, Sparkles, Star, X, Zap
 } from "lucide-react";
 import "./styles.css";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const seedProviders = [
   { id: 1, name: "Maya Rai", skill: "Electrician", category: "Home & Garden", level: "professional", demand: "high", rating: 4.9, reviews: 48, distance: 1.2, price: "NPR 800", availability: "Available today", avatar: "👩🏽‍🔧", verified: true, bio: "Reliable home electrical repairs, installations and safety checks. I bring my own tools and explain the fix clearly." },
@@ -32,6 +36,7 @@ function App() {
   const [requesting, setRequesting] = useState(null);
   const [showOffer, setShowOffer] = useState(false);
   const [toast, setToast] = useState("");
+  const [scrolled, setScrolled] = useState(false);
 
   const results = useMemo(() => providers
     .filter((provider) => category === "All services" || provider.category === category)
@@ -42,6 +47,74 @@ function App() {
     const onKey = (event) => event.key === "Escape" && (setSelected(null), setRequesting(null));
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+
+    const context = gsap.context(() => {
+      const intro = gsap.timeline({ defaults: { ease: "power3.out" } });
+      intro
+        .from(".topbar", { y: -24, autoAlpha: 0, duration: 0.65 })
+        .from(".hero-copy .eyebrow", { y: 18, autoAlpha: 0, duration: 0.45 }, "-=0.25")
+        .from(".hero h1", { y: 30, autoAlpha: 0, duration: 0.7 }, "-=0.2")
+        .from(".hero-text", { y: 18, autoAlpha: 0, duration: 0.5 }, "-=0.35")
+        .from(".hero-actions > *", { y: 16, autoAlpha: 0, stagger: 0.1, duration: 0.45 }, "-=0.25")
+        .from(".stats > div", { y: 14, autoAlpha: 0, stagger: 0.08, duration: 0.4 }, "-=0.2")
+        .from(".hero-visual .hero-card, .hero-note", { y: 22, autoAlpha: 0, stagger: 0.12, duration: 0.55 }, "-=0.35");
+
+      gsap.to(".hero-visual", {
+        yPercent: 7,
+        ease: "none",
+        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 1 }
+      });
+      gsap.to(".hero-copy", {
+        yPercent: -4,
+        ease: "none",
+        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 1 }
+      });
+
+      gsap.utils.toArray("[data-gsap-reveal]").forEach((element) => {
+        gsap.from(element, {
+          y: 45,
+          autoAlpha: 0,
+          duration: 0.8,
+          ease: "power3.out",
+          scrollTrigger: { trigger: element, start: "top 82%", once: true }
+        });
+      });
+
+      gsap.from(".provider-card", {
+        y: 28,
+        autoAlpha: 0,
+        duration: 0.55,
+        stagger: 0.08,
+        ease: "power2.out",
+        scrollTrigger: { trigger: ".provider-grid", start: "top 80%", once: true }
+      });
+    });
+
+    return () => context.revert();
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 18);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px" });
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.querySelectorAll("[data-reveal]").forEach((element) => observer.observe(element));
+    onScroll();
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+    };
   }, []);
 
   const scrollTo = (id) => {
@@ -62,7 +135,7 @@ function App() {
   };
 
   return <>
-    <header className="topbar">
+    <header className={scrolled ? "topbar is-scrolled" : "topbar"}>
       <div className="wrap nav">
         <button className="logo" onClick={() => scrollTo("#home")}><span>↗</span> skill<span className="accent">swap</span></button>
         <nav className={mobileOpen ? "nav-links open" : "nav-links"}>
@@ -78,19 +151,19 @@ function App() {
     <main>
       <section className="hero" id="home"><div className="hero-shape shape-one" /><div className="hero-shape shape-two" /><div className="wrap hero-grid">
         <div className="hero-copy"><p className="eyebrow"><span className="dot" /> Your neighborhood, in motion</p><h1>Good skills are <em>closer</em> than you think.</h1><p className="hero-text">Find trusted people nearby for everyday services — or turn what you know into your next opportunity.</p><div className="hero-actions"><button className="primary" onClick={() => scrollTo("#discover")}>Find a service <ArrowRight size={17} /></button><button className="secondary" onClick={() => { setShowOffer(true); scrollTo("#offer"); }}>Offer your skill</button></div><div className="stats"><div><b>4.9/5</b><small>average rating</small></div><div><b>2,400+</b><small>local helpers</small></div><div><b>18k</b><small>services completed</small></div></div></div>
-        <div className="hero-visual"><div className="visual-ring ring-a" /><div className="visual-ring ring-b" /><div className="hero-card hero-person"><span>👩🏽‍🔧</span><div><b>Maya R.</b><small>Electrician · 4.9 ★</small></div></div><div className="hero-card hero-credit"><Sparkles size={15} /><b>2.8 credits</b><small>Professional · high demand</small></div><div className="hero-note"><ShieldCheck size={16} /> Trusted locally</div></div>
+        <div className="hero-visual"><div className="visual-ring ring-a" /><div className="visual-ring ring-b" /><div className="hero-card hero-person"><span>👩🏽‍🔧</span><div><b>Maya R.</b><small>Electrician · 4.9 ★</small></div></div><div className="hero-card hero-computer"><span>👨🏻‍💻</span><div><b>Sam K.</b><small>Computer repair · 4.8 ★</small></div></div><div className="hero-card hero-credit"><Sparkles size={15} /><b>2.8 credits</b><small>Professional · high demand</small></div><div className="hero-note"><ShieldCheck size={16} /> Trusted locally</div></div>
       </div></section>
 
-      <section className="discover wrap" id="discover"><div className="section-top"><div><p className="eyebrow">LOCAL DISCOVERY</p><h2>What can we help you with?</h2></div><p>Skilled people within a few kilometers of you.</p></div>
+      <section className="discover wrap" id="discover"><div className="section-top reveal" data-reveal data-gsap-reveal><div><p className="eyebrow">LOCAL DISCOVERY</p><h2>What can we help you with?</h2></div><p>Skilled people within a few kilometers of you.</p></div>
         <div className="search"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for a service, like electrician..." /><button onClick={() => setQuery(query.trim())}>Search</button></div>
         <div className="chips">{categories.map((item) => <button className={category === item ? "chip active" : "chip"} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div>
         <div className="results-head"><div><h3>People near you</h3><span>{results.length} trusted provider{results.length === 1 ? "" : "s"} nearby</span></div><label>Sort by <select value={sort} onChange={(event) => setSort(event.target.value)}><option value="recommended">Recommended</option><option value="rating">Top rated</option><option value="distance">Nearest</option><option value="price">Lowest price</option></select></label></div>
-        <div className="provider-grid">{results.length ? results.map((provider) => <ProviderCard key={provider.id} provider={provider} onSelect={setSelected} />) : <div className="empty"><Search size={24} /><h3>No matches yet</h3><p>Try “electrician”, “tutoring”, or another category.</p></div>}</div>
+        <div className="provider-grid results-transition" key={`${category}-${query}-${sort}`}>{results.length ? results.map((provider) => <ProviderCard key={provider.id} provider={provider} onSelect={setSelected} />) : <div className="empty"><Search size={24} /><h3>No matches yet</h3><p>Try “electrician”, “tutoring”, or another category.</p></div>}</div>
       </section>
 
-      <section className="how" id="how"><div className="wrap"><div className="section-top light"><div><p className="eyebrow">SIMPLE BY DESIGN</p><h2>From “I need help”<br />to “All sorted.”</h2></div><p>Good skills should be easy to find, share and trust.</p></div><div className="steps"><article><span>01</span><h3>Search nearby</h3><p>Discover people with the right skills close to home.</p></article><article><span>02</span><h3>Choose with confidence</h3><p>Compare ratings, completed services, price and availability.</p></article><article><span>03</span><h3>Get it done</h3><p>Request a time, meet your local helper and leave a review.</p></article></div></div></section>
+      <section className="how" id="how"><div className="wrap"><div className="section-top light reveal" data-reveal data-gsap-reveal><div><p className="eyebrow">SIMPLE BY DESIGN</p><h2>From “I need help”<br />to “All sorted.”</h2></div><p>Good skills should be easy to find, share and trust.</p></div><div className="steps reveal" data-reveal data-gsap-reveal><article><span>01</span><h3>Search nearby</h3><p>Discover people with the right skills close to home.</p></article><article><span>02</span><h3>Choose with confidence</h3><p>Compare ratings, completed services, price and availability.</p></article><article><span>03</span><h3>Get it done</h3><p>Request a time, meet your local helper and leave a review.</p></article></div></div></section>
 
-      <section className="offer wrap" id="offer"><div className="offer-banner"><div><p className="eyebrow">YOUR SKILL HAS VALUE</p><h2>Know how to do something well?</h2><p>Earn money, credits, and a little more connection along the way.</p><button className="primary" onClick={() => setShowOffer(true)}>Start offering <ArrowRight size={17} /></button></div><div className="offer-stat"><b>68%</b><span>of members earn extra income each month</span><div>👩🏽‍🍳 👨🏽‍🌾 👩🏻‍🎨</div></div></div></section>
+      <section className="offer wrap" id="offer"><div className="offer-banner reveal" data-reveal data-gsap-reveal><div><p className="eyebrow">YOUR SKILL HAS VALUE</p><h2>Know how to do something well?</h2><p>Earn money, credits, and a little more connection along the way.</p><button className="primary" onClick={() => setShowOffer(true)}>Start offering <ArrowRight size={17} /></button></div><div className="offer-stat"><b>68%</b><span>of members earn extra income each month</span><div>👩🏽‍🍳 👨🏽‍🌾 👩🏻‍🎨</div></div></div></section>
     </main>
 
     <footer><div className="wrap footer-inner"><button className="logo" onClick={() => scrollTo("#home")}><span>↗</span> skill<span className="accent">swap</span></button><p>Find a skill. Offer a skill. Build a stronger local community.</p><small>© 2026 SkillSwap</small></div></footer>

@@ -1,4 +1,10 @@
-node_modules/
+# Dependencies
+Local-Skill/node_modules/
+
+# Build output
+Local-Skill/dist/
+
+# Environment variables
 .env
-dist/
-build/
+.env.*
+!.env.example
